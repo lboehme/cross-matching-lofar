@@ -4,22 +4,38 @@ from astropy import units as u
 
 
 def f_gauss(x,y, A,x0,y0,sx,sy,theta):
+    # Standard 2D-Gaussian definition
+    
     a = np.cos(theta)**2/(2*sx**2) + np.sin(theta)**2/(2*sy**2)
     b = -np.sin(2*theta)/(4*sx**2) + np.sin(2*theta)/(4*sy**2)
     c = np.sin(theta)**2/(2*sx**2) + np.cos(theta)**2/(2*sy**2)
     return A*np.exp(-(a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2))
     
 def leng(x):
+    # This function returns the length of the input, but can handle 
+    # different datatypes compared to the built-in len
+    
     if type(x) == int or type(x) == np.int64 or type(x) == float:
         return 1
     else:
         return len(x)
     
+    
 def cross_match(idLX_L, idLX_X, RA_L,DEC_L,MAJ_L,MIN_L,PA_L, RA_X,DEC_X,MAJ_X,MIN_X,PA_X, v_thr):
     # This is the main cross-matching function. It compares the Gaussians of potential matches
     # and according to the threshold value returns a list of accepted matches
     # with indices into L and X
-
+    # L could be any catalogue, not specifically LoLSS
+    #
+    # Inputs:
+    # idLX: The indices of the potential matches
+    # RA: Right Ascension
+    # DEC: Declination
+    # MAJ: Major axis
+    # MIN: Minor axis
+    # PA: Positional angle
+    # v_thr: Threshold value for accepting matches
+    
     MY_LX_mid = []
     MY_LX_max = []
 
@@ -27,7 +43,7 @@ def cross_match(idLX_L, idLX_X, RA_L,DEC_L,MAJ_L,MIN_L,PA_L, RA_X,DEC_X,MAJ_X,MI
         v1 = idLX_X[i] #v1 = Index of X source
         
         #Case 1: Calculate Gaussian at potential counterpart
-        m_val = f_gauss(RA_X[v1] ,DEC_X[v1], 1, RA_L[v], DEC_L[v], MAJ_L[v]/2.355, MIN_L[v]/2.355, PA_L[v]+np.pi/2) # + Pi/2 = 90° as angle from x-axis
+        m_val = f_gauss(RA_X[v1], DEC_X[v1], 1, RA_L[v], DEC_L[v], MAJ_L[v]/2.355, MIN_L[v]/2.355, PA_L[v]+np.pi/2) # + Pi/2 = 90° as angle from x-axis
         
         #Case 2: Draw line between both source center
         x = np.arange(RA_L[v]-MAJ_L[v], RA_L[v]+MAJ_L[v], 0.0001)
@@ -91,12 +107,17 @@ def cross_id(accLX_L, accLX_X):
 
 
 
-# Example use
+# Example use for LoLSS and LoTSS-DR2:
+# Though nothing is specific here to these catalogues except the names
+# First create the catalogues in Astropy SkyCoord
 cat_L = SkyCoord(ra=RA_L*u.degree, dec=DEC_L*u.degree)
 cat_T2 = SkyCoord(ra=RA_T2*u.degree, dec=DEC_T2*u.degree)
 
+# Then do a rough cross-match between them with some large distance
 idLT2_L, idLT2_T2,d2d,d3d = search_around_sky(cat_L,cat_T2,205*u.arcsecond)
 
+# Apply the cross-matching function to the potential matches and receive the accepted matches
 accLT2_L, accLT2_T2 = cross_match(idLT2_L, idLT2_T2, RA_L,DEC_L,MAJ_L,MIN_L,PA_L, RA_T2,DEC_T2,MAJ_T2,MIN_T2,PA_T2,0.5)
 
+# Transform the accepted matches into a single array
 mat_T2 = cross_id(accLT2_L, accLT2_T2)
